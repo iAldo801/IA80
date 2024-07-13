@@ -1,0 +1,87 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String             @id @map("_id")
+  username        String
+  email           String
+  emailVerified   Boolean?           @default(false)
+  hashedPassword  String?
+  avatar          String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  Ticket          Ticket[]
+  assignedTickets TicketAssignment[] @relation("AssignedTickets")
+  sessions        Session[]
+  TicketReply     TicketReply[]
+
+  @@index([email], map: "user_email_idx")
+}
+
+model Session {
+  id        String   @id @map("_id")
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "session_user_idx")
+}
+
+model EmailVerificationCode {
+  id        String   @id @map("_id")
+  userId    String   @unique
+  email     String
+  code      String
+  expiresAt DateTime
+
+  @@index([email], map: "verification_code_email_idx")
+}
+
+model Ticket {
+  id          String             @id @map("_id")
+  username    String
+  userId      String
+  title       String
+  body        String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime?          @updatedAt
+  closedAt    DateTime?
+  closedBy    String?
+  status      String             @default("open")
+  priority    String             @default("low")
+  user        User               @relation(fields: [userId], references: [id])
+  assignments TicketAssignment[]
+  TicketReply TicketReply[]
+
+  @@index([userId], map: "ticket_user_idx")
+}
+
+model TicketReply {
+  id        String   @id @map("_id")
+  ticketId  String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  @@index([ticketId], map: "ticket_reply_ticket_idx")
+  @@index([userId], map: "ticket_reply_user_idx")
+}
+
+model TicketAssignment {
+  id             String   @id @map("_id")
+  ticketId       String
+  assignedUserId String
+  assignedAt     DateTime @default(now())
+  ticket         Ticket   @relation(fields: [ticketId], references: [id])
+  assignedUser   User     @relation("AssignedTickets", fields: [assignedUserId], references: [id])
+
+  @@index([ticketId], map: "ticket_assignment_ticket_idx")
+  @@index([assignedUserId], map: "ticket_assignment_assigned_user_idx")
+}
